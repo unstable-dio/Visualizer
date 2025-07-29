@@ -26,13 +26,22 @@ class AudioVisualizer:
     def start(self):
         if self.source:
             # load file and start playback
-            self.playback_data, file_sr = sf.read(self.source, dtype='float32')
+            try:
+                self.playback_data, file_sr = sf.read(self.source, dtype='float32')
+            except Exception as e:
+                print(f"Failed to read '{self.source}': {e}")
+                return False
             if self.samplerate is None:
                 self.samplerate = file_sr
-            self.playback_stream = sd.OutputStream(samplerate=self.samplerate,
-                                                   channels=self.playback_data.shape[1] if self.playback_data.ndim > 1 else 1)
-            self.playback_stream.start()
-            self.playback_stream.write(self.playback_data)
+            try:
+                self.playback_stream = sd.OutputStream(
+                    samplerate=self.samplerate,
+                    channels=self.playback_data.shape[1] if self.playback_data.ndim > 1 else 1)
+                self.playback_stream.start()
+                self.playback_stream.write(self.playback_data)
+            except Exception as e:
+                print(f"Failed to play '{self.source}': {e}")
+                return False
 
         self.stream = sd.InputStream(device=self.device,
                                      channels=1,
@@ -40,6 +49,7 @@ class AudioVisualizer:
                                      samplerate=self.samplerate,
                                      blocksize=self.blocksize)
         self.stream.start()
+        return True
 
     def stop(self):
         if self.stream:
@@ -62,7 +72,9 @@ def run_visualizer(source=None):
     pygame.display.set_caption('Audio Visualizer')
 
     visualizer = AudioVisualizer(source=source)
-    visualizer.start()
+    if not visualizer.start():
+        pygame.quit()
+        return
 
     clock = pygame.time.Clock()
     running = True
