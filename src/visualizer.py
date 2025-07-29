@@ -21,7 +21,6 @@ class AudioVisualizer:
         self.q = queue.Queue()
         self.stream = None
         self.playback_data = None
-        self.playback_stream = None
 
     def audio_callback(self, indata, frames, time, status):
         """Handle audio input blocks and queue their amplitude.
@@ -72,11 +71,8 @@ class AudioVisualizer:
             if self.samplerate is None:
                 self.samplerate = file_sr
             try:
-                self.playback_stream = sd.OutputStream(
-                    samplerate=self.samplerate,
-                    channels=self.playback_data.shape[1] if self.playback_data.ndim > 1 else 1)
-                self.playback_stream.start()
-                self.playback_stream.write(self.playback_data)
+                # Play the file asynchronously so the Pygame window doesn't block
+                sd.play(self.playback_data, self.samplerate)
             except Exception as e:
                 print(f"Failed to play '{self.source}': {e}")
                 return False
@@ -95,9 +91,8 @@ class AudioVisualizer:
         if self.stream:
             self.stream.stop()
             self.stream.close()
-        if self.playback_stream:
-            self.playback_stream.stop()
-            self.playback_stream.close()
+        # Stop any asynchronous playback started with sd.play()
+        sd.stop()
 
 
     def get_data(self):
