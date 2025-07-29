@@ -101,6 +101,7 @@ class AudioVisualizer:
             return 0.0
 
 
+
 def run_visualizer(source=None):
     """Launch the visualization window.
 
@@ -110,11 +111,15 @@ def run_visualizer(source=None):
         Path to an audio file to visualize. When ``None`` the microphone
         is used.
     """
+
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
     pygame.display.set_caption('Audio Visualizer')
 
-    visualizer = AudioVisualizer(source=source)
+    visualizer = AudioVisualizer(source=source,
+                                device=device,
+                                samplerate=samplerate,
+                                blocksize=blocksize)
     visualizer.start()
 
     clock = pygame.time.Clock()
@@ -143,5 +148,18 @@ def run_visualizer(source=None):
 
 
 if __name__ == '__main__':
-    source = sys.argv[1] if len(sys.argv) > 1 else None
-    run_visualizer(source)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Simple audio visualizer")
+    parser.add_argument('source', nargs='?', help='Optional audio file to play')
+    parser.add_argument('--samplerate', type=int, default=44100,
+                        help='Audio sampling rate (default: 44100)')
+    parser.add_argument('--blocksize', type=int, default=1024,
+                        help='Block size for audio capture (default: 1024)')
+    parser.add_argument('--device', help='Input device name or index')
+    args = parser.parse_args()
+
+    run_visualizer(args.source,
+                   samplerate=args.samplerate,
+                   blocksize=args.blocksize,
+                   device=args.device)
