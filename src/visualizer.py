@@ -1,6 +1,7 @@
 """Realtime audio visualization utilities."""
 
 import sys
+import argparse
 import numpy as np
 import pygame
 import sounddevice as sd
@@ -9,27 +10,14 @@ import queue
 
 
 class AudioVisualizer:
-    """Generate amplitude values from audio input for visualization."""
-    def __init__(self, source=None, device=None, samplerate=44100, blocksize=1024):
-        """Initialize the visualizer.
 
-        Parameters
-        ----------
-        source : str or None, optional
-            Path to an audio file to play and visualize. When ``None`` the
-            microphone is used.
-        device : int or None, optional
-            Input device index used by :mod:`sounddevice`.
-        samplerate : int, optional
-            Sampling rate for audio capture in hertz.
-        blocksize : int, optional
-            Size of audio blocks passed to the callback.
-        """
+    def __init__(self, source=None, device=None, samplerate=44100, blocksize=1024, mode="amplitude"):
 
         self.source = source
         self.samplerate = samplerate
         self.blocksize = blocksize
         self.device = device
+        self.mode = mode
         self.q = queue.Queue()
         self.stream = None
         self.playback_data = None
@@ -52,8 +40,24 @@ class AudioVisualizer:
 
         if status:
             print(status, file=sys.stderr)
-        amplitude = np.linalg.norm(indata) / np.sqrt(len(indata))
-        self.q.put(amplitude)
+        if self.mode == "amplitude":
+            amplitude = np.linalg.norm(indata) / np.sqrt(len(indata))
+            self.q.put(amplitude)
+        else:
+            data = indata[:, 0]
+            spectrum = np.abs(np.fft.rfft(data))
+            freqs = np.fft.rfftfreq(len(data), d=1.0 / self.samplerate)
+
+            def band_power(low, high):
+                idx = np.logical_and(freqs >= low, freqs < high)
+                if np.any(idx):
+                    return float(np.mean(spectrum[idx]))
+                return 0.0
+
+            bass = band_power(20, 250)
+            mid = band_power(250, 4000)
+            high = band_power(4000, self.samplerate / 2)
+            self.q.put((bass, mid, high))
 
     def start(self):
         """Start audio capture and optional playback."""
@@ -85,24 +89,23 @@ class AudioVisualizer:
             self.playback_stream.stop()
             self.playback_stream.close()
 
-    def get_amplitude(self):
-        """Retrieve the latest amplitude value.
 
-        Returns
-        -------
-        float
-            The most recent amplitude measurement or ``0.0`` when no
-            measurement is available.
-        """
+    def get_data(self):
+
 
         try:
             return self.q.get_nowait()
         except queue.Empty:
-            return 0.0
+            if self.mode == "amplitude":
+                return 0.0
+            return (0.0, 0.0, 0.0)
 
 
 
-def run_visualizer(source=None):
+def run_visualizer(source=None, mode="amplitude"):
+
+
+
     """Launch the visualization window.
 
     Parameters
@@ -112,34 +115,48 @@ def run_visualizer(source=None):
         is used.
     """
 
+
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
     pygame.display.set_caption('Audio Visualizer')
 
-    visualizer = AudioVisualizer(source=source,
-                                device=device,
-                                samplerate=samplerate,
-                                blocksize=blocksize)
+
+    visualizer = AudioVisualizer(source=source, mode=mode)
+
     visualizer.start()
 
     clock = pygame.time.Clock()
     running = True
     amplitude = 0
+    bands = (0.0, 0.0, 0.0)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        amp = visualizer.get_amplitude()
-        if amp:
-            amplitude = amp
+        data = visualizer.get_data()
+        if mode == "amplitude":
+            if data:
+                amplitude = data
+        else:
+            if any(data):
+                bands = data
 
         screen.fill((0, 0, 0))
-        height = int(amplitude * 400)
-        height = max(10, min(height, 600))
-        color_value = min(255, int(amplitude * 500))
-        color = (color_value, 255 - color_value, 128)
-        pygame.draw.rect(screen, color, (100, 300 - height//2, 600, height))
+        if mode == "amplitude":
+            height = int(amplitude * 400)
+            height = max(10, min(height, 600))
+            color_value = min(255, int(amplitude * 500))
+            color = (color_value, 255 - color_value, 128)
+            pygame.draw.rect(screen, color, (100, 300 - height//2, 600, height))
+        else:
+            bar_width = 180
+            for i, val in enumerate(bands):
+                height = int(val * 0.05)
+                height = max(10, min(height, 600))
+                color = (int(85 * i + 85), 255 - int(85 * i + 85), 128)
+                x = 100 + i * (bar_width + 20)
+                pygame.draw.rect(screen, color, (x, 300 - height//2, bar_width, height))
         pygame.display.flip()
         clock.tick(60)
 
@@ -148,18 +165,11 @@ def run_visualizer(source=None):
 
 
 if __name__ == '__main__':
-    import argparse
 
     parser = argparse.ArgumentParser(description="Simple audio visualizer")
-    parser.add_argument('source', nargs='?', help='Optional audio file to play')
-    parser.add_argument('--samplerate', type=int, default=44100,
-                        help='Audio sampling rate (default: 44100)')
-    parser.add_argument('--blocksize', type=int, default=1024,
-                        help='Block size for audio capture (default: 1024)')
-    parser.add_argument('--device', help='Input device name or index')
+    parser.add_argument("source", nargs="?", help="Audio file to play and visualize")
+    parser.add_argument("--mode", choices=["amplitude", "frequency"], default="amplitude",
+                        help="Visualization mode")
     args = parser.parse_args()
+    run_visualizer(args.source, mode=args.mode)
 
-    run_visualizer(args.source,
-                   samplerate=args.samplerate,
-                   blocksize=args.blocksize,
-                   device=args.device)

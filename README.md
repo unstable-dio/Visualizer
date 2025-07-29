@@ -17,16 +17,18 @@ pip install pygame sounddevice soundfile numpy
 
 ## Running
 
-To visualize microphone input:
+To visualize microphone input in amplitude mode:
 
 ```bash
 python src/visualizer.py
 ```
 
-You can optionally specify the audio samplerate, block size, and device:
+
+To visualize microphone input in frequency mode:
 
 ```bash
-python src/visualizer.py --samplerate 48000 --blocksize 2048 --device 1
+python src/visualizer.py --mode frequency
+
 ```
 
 To visualize a specific audio file (e.g., `song.wav`):
@@ -35,23 +37,11 @@ To visualize a specific audio file (e.g., `song.wav`):
 python src/visualizer.py song.wav
 ```
 
-List available audio devices with:
+You can also display frequency bars for the file:
 
 ```bash
-python -m sounddevice
+python src/visualizer.py song.wav --mode frequency
 ```
 
-## Troubleshooting
+A window will open showing bars that react to the audio input.
 
-- If no audio is captured or playback fails, verify the correct device index or
-  name is used. Run `python -m sounddevice` to see all available devices.
-- Ensure your operating system allows Python to access the microphone or audio
-  input. On Linux you may need to add your user to the `audio` group.
-- Some devices require specific sample rates or block sizes. Try adjusting the
-  `--samplerate` or `--blocksize` arguments if you encounter errors.
-
-A window will open showing a dynamic bar that reacts to the audio amplitude.
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
