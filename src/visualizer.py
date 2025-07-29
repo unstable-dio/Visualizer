@@ -1,3 +1,5 @@
+"""Realtime audio visualization utilities."""
+
 import sys
 import argparse
 import numpy as np
@@ -8,7 +10,9 @@ import queue
 
 
 class AudioVisualizer:
+
     def __init__(self, source=None, device=None, samplerate=44100, blocksize=1024, mode="amplitude"):
+
         self.source = source
         self.samplerate = samplerate
         self.blocksize = blocksize
@@ -20,6 +24,20 @@ class AudioVisualizer:
         self.playback_stream = None
 
     def audio_callback(self, indata, frames, time, status):
+        """Handle audio input blocks and queue their amplitude.
+
+        Parameters
+        ----------
+        indata : ndarray
+            Incoming audio data.
+        frames : int
+            Number of frames in ``indata``.
+        time : object
+            Unused timing information provided by :mod:`sounddevice`.
+        status : CallbackFlags
+            Status flags indicating errors from :mod:`sounddevice`.
+        """
+
         if status:
             print(status, file=sys.stderr)
         if self.mode == "amplitude":
@@ -42,6 +60,8 @@ class AudioVisualizer:
             self.q.put((bass, mid, high))
 
     def start(self):
+        """Start audio capture and optional playback."""
+
         if self.source:
             # load file and start playback
             self.playback_data, file_sr = sf.read(self.source, dtype='float32')
@@ -60,6 +80,8 @@ class AudioVisualizer:
         self.stream.start()
 
     def stop(self):
+        """Stop audio capture and playback streams."""
+
         if self.stream:
             self.stream.stop()
             self.stream.close()
@@ -67,7 +89,10 @@ class AudioVisualizer:
             self.playback_stream.stop()
             self.playback_stream.close()
 
+
     def get_data(self):
+
+
         try:
             return self.q.get_nowait()
         except queue.Empty:
@@ -76,12 +101,28 @@ class AudioVisualizer:
             return (0.0, 0.0, 0.0)
 
 
+
 def run_visualizer(source=None, mode="amplitude"):
+
+
+
+    """Launch the visualization window.
+
+    Parameters
+    ----------
+    source : str or None, optional
+        Path to an audio file to visualize. When ``None`` the microphone
+        is used.
+    """
+
+
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
     pygame.display.set_caption('Audio Visualizer')
 
+
     visualizer = AudioVisualizer(source=source, mode=mode)
+
     visualizer.start()
 
     clock = pygame.time.Clock()
@@ -124,9 +165,11 @@ def run_visualizer(source=None, mode="amplitude"):
 
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description="Simple audio visualizer")
     parser.add_argument("source", nargs="?", help="Audio file to play and visualize")
     parser.add_argument("--mode", choices=["amplitude", "frequency"], default="amplitude",
                         help="Visualization mode")
     args = parser.parse_args()
     run_visualizer(args.source, mode=args.mode)
+

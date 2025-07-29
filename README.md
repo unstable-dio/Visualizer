@@ -23,10 +23,12 @@ To visualize microphone input in amplitude mode:
 python src/visualizer.py
 ```
 
+
 To visualize microphone input in frequency mode:
 
 ```bash
 python src/visualizer.py --mode frequency
+
 ```
 
 To visualize a specific audio file (e.g., `song.wav`):
@@ -42,3 +44,4 @@ python src/visualizer.py song.wav --mode frequency
 ```
 
 A window will open showing bars that react to the audio input.
+
