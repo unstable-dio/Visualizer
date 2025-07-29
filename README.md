@@ -30,3 +30,7 @@ python src/visualizer.py song.wav
 ```
 
 A window will open showing a dynamic bar that reacts to the audio amplitude.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
