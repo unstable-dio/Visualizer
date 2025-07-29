@@ -1,3 +1,5 @@
+"""Realtime audio visualization utilities."""
+
 import sys
 import numpy as np
 import pygame
@@ -7,7 +9,23 @@ import queue
 
 
 class AudioVisualizer:
+    """Generate amplitude values from audio input for visualization."""
     def __init__(self, source=None, device=None, samplerate=44100, blocksize=1024):
+        """Initialize the visualizer.
+
+        Parameters
+        ----------
+        source : str or None, optional
+            Path to an audio file to play and visualize. When ``None`` the
+            microphone is used.
+        device : int or None, optional
+            Input device index used by :mod:`sounddevice`.
+        samplerate : int, optional
+            Sampling rate for audio capture in hertz.
+        blocksize : int, optional
+            Size of audio blocks passed to the callback.
+        """
+
         self.source = source
         self.samplerate = samplerate
         self.blocksize = blocksize
@@ -18,12 +36,28 @@ class AudioVisualizer:
         self.playback_stream = None
 
     def audio_callback(self, indata, frames, time, status):
+        """Handle audio input blocks and queue their amplitude.
+
+        Parameters
+        ----------
+        indata : ndarray
+            Incoming audio data.
+        frames : int
+            Number of frames in ``indata``.
+        time : object
+            Unused timing information provided by :mod:`sounddevice`.
+        status : CallbackFlags
+            Status flags indicating errors from :mod:`sounddevice`.
+        """
+
         if status:
             print(status, file=sys.stderr)
         amplitude = np.linalg.norm(indata) / np.sqrt(len(indata))
         self.q.put(amplitude)
 
     def start(self):
+        """Start audio capture and optional playback."""
+
         if self.source:
             # load file and start playback
             self.playback_data, file_sr = sf.read(self.source, dtype='float32')
@@ -42,6 +76,8 @@ class AudioVisualizer:
         self.stream.start()
 
     def stop(self):
+        """Stop audio capture and playback streams."""
+
         if self.stream:
             self.stream.stop()
             self.stream.close()
@@ -50,6 +86,15 @@ class AudioVisualizer:
             self.playback_stream.close()
 
     def get_amplitude(self):
+        """Retrieve the latest amplitude value.
+
+        Returns
+        -------
+        float
+            The most recent amplitude measurement or ``0.0`` when no
+            measurement is available.
+        """
+
         try:
             return self.q.get_nowait()
         except queue.Empty:
@@ -57,6 +102,14 @@ class AudioVisualizer:
 
 
 def run_visualizer(source=None):
+    """Launch the visualization window.
+
+    Parameters
+    ----------
+    source : str or None, optional
+        Path to an audio file to visualize. When ``None`` the microphone
+        is used.
+    """
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
     pygame.display.set_caption('Audio Visualizer')
